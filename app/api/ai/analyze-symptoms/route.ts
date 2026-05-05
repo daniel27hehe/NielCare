@@ -120,7 +120,7 @@ Return ONLY a valid JSON object matching this schema exactly:
       try {
         console.log(`[AI] ${providerName} Attempt ${attempt + 1} sending request (timeout ${timeoutMs}ms)`);
         const fetchUrl = useNv ? nvUrl : geminiUrl;
-        const fetchOpts = useNv ? {
+        const fetchOpts: RequestInit = useNv ? {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
