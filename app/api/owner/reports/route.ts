@@ -27,16 +27,25 @@ export async function GET(request: NextRequest) {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const next = new Date(start);
-    next.setDate(start.getDate() + 1);
-    const dateStr = start.toISOString().split("T")[0];
-    const nextStr = next.toISOString().split("T")[0];
+    
+    // Create local date string YYYY-MM-DD
+    const dateStr = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0")
+    ].join("-");
+
+    // Get start and end of the local day in UTC to query created_at
+    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(startOfDay.getDate() + 1);
+
     const { count } = await adminSupabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
-      .gte("appointment_date", dateStr)
-      .lt("appointment_date", nextStr);
+      .gte("created_at", startOfDay.toISOString())
+      .lt("created_at", endOfDay.toISOString());
+
     dailyAppointments.push({ date: dateStr, count: count || 0 });
   }
 
@@ -77,9 +86,11 @@ export async function GET(request: NextRequest) {
 
   // --- Monthly revenue: current month, done appointments, from service base_price ---
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
+  const monthStart = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    "01"
+  ].join("-");
 
   const { data: monthDoneAppts } = await adminSupabase
     .from("appointments")

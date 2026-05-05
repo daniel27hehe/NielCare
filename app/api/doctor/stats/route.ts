@@ -22,11 +22,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Doctor not found" }, { status: 404 });
   }
 
-  const today = new Date().toISOString().split("T")[0];
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+  
+  const monthStart = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    "01"
+  ].join("-");
 
   // Fetch all appointments for this doctor (with service for price lookup)
   const { data: appointments } = await adminSupabase

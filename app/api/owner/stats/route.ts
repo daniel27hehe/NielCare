@@ -63,21 +63,33 @@ export async function GET(request: NextRequest) {
   for (let i = 5; i >= 0; i--) {
     const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
-    const monthStr = start.toISOString().slice(0, 7); // "YYYY-MM"
+    const startStr = [
+      start.getFullYear(),
+      String(start.getMonth() + 1).padStart(2, "0"),
+      String(start.getDate()).padStart(2, "0")
+    ].join("-");
+
+    const endStr = [
+      end.getFullYear(),
+      String(end.getMonth() + 1).padStart(2, "0"),
+      String(end.getDate()).padStart(2, "0")
+    ].join("-");
+
+    const monthStr = startStr.slice(0, 7); // "YYYY-MM"
     const label = start.toLocaleString("default", { month: "short", year: "numeric" });
 
     const { count: monthApptsCount } = await adminSupabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
-      .gte("appointment_date", start.toISOString().split("T")[0])
-      .lt("appointment_date", end.toISOString().split("T")[0]);
+      .gte("appointment_date", startStr)
+      .lt("appointment_date", endStr);
 
     const { data: monthDone } = await adminSupabase
       .from("appointments")
       .select("service:services!appointments_service_id_fkey(base_price)")
       .eq("status", "done")
-      .gte("appointment_date", start.toISOString().split("T")[0])
-      .lt("appointment_date", end.toISOString().split("T")[0]);
+      .gte("appointment_date", startStr)
+      .lt("appointment_date", endStr);
 
     const monthRevenue = (monthDone || []).reduce((sum: number, a: any) => sum + ((a.service as any)?.base_price || 0), 0);
 
