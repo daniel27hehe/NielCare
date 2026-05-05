@@ -6,9 +6,45 @@ const CIRCUIT_BASE_COOLDOWN_MS = 60_000; // base cooldown 60s, doubles each addi
 let aiFailureCount = 0;
 let aiCircuitOpenUntil = 0; // timestamp (ms) until which circuit is open
 
+// Simple heuristic fallback for when the AI service is unavailable.
+const heuristicAnalysis = (symptomsText: string | undefined, svc?: string) => {
+  const s = (symptomsText || "").toLowerCase();
+  const criticalPattern = /severe|unbearable|excruciating|heavy bleeding|bleeding|pus|abscess|swelling|lost consciousness|difficulty breathing|intense pain/;
+  const moderatePattern = /sharp pain|throbbing|fever|infection|sensitivity|persistent pain|moderate pain|swollen|pain when chewing/;
+
+  if (criticalPattern.test(s)) {
+    return {
+      emergencyLevel: "critical",
+      reason: "Symptoms indicate a possible severe dental emergency.",
+      recommendation: "Seek immediate urgent care or ER if bleeding or severe pain persists."
+    };
+  }
+
+  if (moderatePattern.test(s)) {
+    return {
+      emergencyLevel: "moderate",
+      reason: "Symptoms suggest a significant dental issue that may need prompt attention.",
+      recommendation: "Contact the clinic for an earlier appointment and consider pain relief measures."
+    };
+  }
+
+  return {
+    emergencyLevel: "routine",
+    reason: "Symptoms appear non-urgent based on the provided description.",
+    recommendation: "Schedule a regular appointment and use over-the-counter remedies as needed."
+  };
+};
+
 export async function POST(req: NextRequest) {
+  let symptoms = "";
+  let serviceName = "";
+  let providerName = "AI";
+  let timeoutMs = 30000;
+
   try {
-    const { symptoms, serviceName } = await req.json();
+    const body = await req.json();
+    symptoms = body.symptoms;
+    serviceName = body.serviceName;
 
     if (!symptoms || !serviceName) {
       return NextResponse.json(
@@ -16,35 +52,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Simple heuristic fallback for when the AI service is unavailable.
-    const heuristicAnalysis = (symptomsText: string | undefined, svc?: string) => {
-      const s = (symptomsText || "").toLowerCase();
-      const criticalPattern = /severe|unbearable|excruciating|heavy bleeding|bleeding|pus|abscess|swelling|lost consciousness|difficulty breathing|intense pain/;
-      const moderatePattern = /sharp pain|throbbing|fever|infection|sensitivity|persistent pain|moderate pain|swollen|pain when chewing/;
-
-      if (criticalPattern.test(s)) {
-        return {
-          emergencyLevel: "critical",
-          reason: "Symptoms indicate a possible severe dental emergency.",
-          recommendation: "Seek immediate urgent care or ER if bleeding or severe pain persists."
-        };
-      }
-
-      if (moderatePattern.test(s)) {
-        return {
-          emergencyLevel: "moderate",
-          reason: "Symptoms suggest a significant dental issue that may need prompt attention.",
-          recommendation: "Contact the clinic for an earlier appointment and consider pain relief measures."
-        };
-      }
-
-      return {
-        emergencyLevel: "routine",
-        reason: "Symptoms appear non-urgent based on the provided description.",
-        recommendation: "Schedule a regular appointment and use over-the-counter remedies as needed."
-      };
-    };
 
     // Support NVAPI (NVIDIA Integrate) as alternative to Gemini.
     const nvApiKey = process.env.NVAPI_KEY;
@@ -58,7 +65,7 @@ export async function POST(req: NextRequest) {
     // Gemini settings (only used if NVAPI not provided)
     const geminiModel = process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const geminiApiVersion = process.env.GEMINI_API_VERSION || "v1beta";
-    let timeoutMs = parseInt(process.env.GEMINI_FETCH_TIMEOUT_MS || "30000", 10);
+    timeoutMs = parseInt(process.env.GEMINI_FETCH_TIMEOUT_MS || "30000", 10);
     if (timeoutMs < 5000) timeoutMs = 5000;
 
     // NVAPI settings
@@ -83,7 +90,7 @@ export async function POST(req: NextRequest) {
       }, { status: 503 });
     }
 
-    const providerName = useNv ? 'NVAPI' : 'Gemini';
+    providerName = useNv ? 'NVAPI' : 'Gemini';
     console.log(`[AI] Initializing API call`, { provider: providerName, timeoutMs, keyPreview: apiKey.substring(0, 10) + '...' });
 
     const prompt = `You are an AI dental assistant. Analyze the following patient symptoms for a dental booking.
