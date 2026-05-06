@@ -68,13 +68,21 @@ function LoginFormContent() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role")
         .eq("id", user.id)
         .single();
 
-      const userRole = profile?.role || "patient";
+      if (!profile || profileError) {
+        // Akun Auth ada tapi tidak ada profil di tabel users — akun rusak
+        await supabase.auth.signOut();
+        setError("Akun Anda belum terdaftar dengan benar. Hubungi administrator.");
+        setLoading(false);
+        return;
+      }
+
+      const userRole = profile.role;
       router.push(`/${userRole}/dashboard`);
       router.refresh();
     }

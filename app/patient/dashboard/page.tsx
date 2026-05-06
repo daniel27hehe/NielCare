@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import type { User, Appointment, PatientStats } from "@/types";
 import Link from "next/link";
-import { CalendarPlus, Calendar, CheckCircle, Bell, User as UserIcon, Clock, Loader2 } from "lucide-react";
+import { CalendarPlus, Calendar, CheckCircle, User as UserIcon, Clock, Loader2 } from "lucide-react";
 
 export default function PatientDashboard() {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<PatientStats>({ upcomingAppointments: 0, completedAppointments: 0, unreadNotifications: 0 });
+  const [stats, setStats] = useState<PatientStats>({ upcomingAppointments: 0, completedAppointments: 0 });
   const [upcomingList, setUpcomingList] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,8 +27,7 @@ export default function PatientDashboard() {
       if (upcoming) setUpcomingList(upcoming as Appointment[]);
       const { count: upcomingCount } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("patient_id", authUser.id).in("status", ["pending", "approved"]);
       const { count: completedCount } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("patient_id", authUser.id).eq("status", "done");
-      const { count: notifCount } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("is_read", false);
-      setStats({ upcomingAppointments: upcomingCount || 0, completedAppointments: completedCount || 0, unreadNotifications: notifCount || 0 });
+      setStats({ upcomingAppointments: upcomingCount || 0, completedAppointments: completedCount || 0 });
       setLoading(false);
     }
     fetchData();
@@ -41,7 +40,7 @@ export default function PatientDashboard() {
   const statCards = [
     { label: "Akan Datang", value: stats.upcomingAppointments, icon: Calendar, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
     { label: "Selesai", value: stats.completedAppointments, icon: CheckCircle, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
-    { label: "Notifikasi", value: stats.unreadNotifications, icon: Bell, color: "text-amber-600", bg: "bg-amber-50" },
+    
   ];
 
   return (

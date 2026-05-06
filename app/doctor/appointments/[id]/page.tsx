@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { StatusBadge, EmergencyBadge } from "@/components/shared/StatusBadge";
 import { EmergencyBanner } from "@/components/shared/EmergencyBanner";
-import { formatDate, formatTime, formatCurrency } from "@/lib/utils/formatters";
+import { formatDate, formatTime, formatCurrency, formatNumber } from "@/lib/utils/formatters";
 import { EMERGENCY_LEVEL_LABELS } from "@/types";
 import type { Appointment, MedicalRecord } from "@/types";
 import { Loader2, ArrowLeft, Check, X, FileText, Brain, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
@@ -89,7 +89,7 @@ export default function DoctorAppointmentDetailPage() {
             diagnosis_notes: data.medical_record.diagnosis_notes || "",
             treatment_given: data.medical_record.treatment_given || "",
             medications_prescribed: data.medical_record.medications_prescribed || "",
-            treatment_cost: data.medical_record.treatment_cost?.toString() || "",
+            treatment_cost: data.medical_record.treatment_cost != null ? formatNumber(data.medical_record.treatment_cost) : "",
           });
         } else {
           // Pre-fill treatment_cost from AI estimate
@@ -98,7 +98,7 @@ export default function DoctorAppointmentDetailPage() {
               ? (typeof data.ai_analysis_result === "string" ? JSON.parse(data.ai_analysis_result) : data.ai_analysis_result)
               : null;
             if (ai?.estimatedCost) {
-              setRecord(prev => ({ ...prev, treatment_cost: ai.estimatedCost.toString() }));
+              setRecord(prev => ({ ...prev, treatment_cost: formatNumber(ai.estimatedCost) }));
             }
           } catch { /* ignore */ }
         }
@@ -306,11 +306,18 @@ export default function DoctorAppointmentDetailPage() {
                     )}
                   </Label>
                   <Input
-                    type="number"
-                    min={0}
+                    type="text"
                     value={record.treatment_cost}
-                    onChange={e => setRecord(p => ({ ...p, treatment_cost: e.target.value }))}
-                    placeholder={aiAnalysis?.estimatedCost ? aiAnalysis.estimatedCost.toString() : "0"}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      if (!digits) {
+                        setRecord(p => ({ ...p, treatment_cost: "" }));
+                        return;
+                      }
+                      const num = parseInt(digits, 10);
+                      setRecord(p => ({ ...p, treatment_cost: formatNumber(num) }));
+                    }}
+                    placeholder={aiAnalysis?.estimatedCost ? formatNumber(aiAnalysis.estimatedCost) : "0"}
                     className="rounded-xl"
                   />
                   {/* Show warning/OK if cost is entered and AI range exists */}

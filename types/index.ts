@@ -138,5 +138,4 @@ export interface DoctorStats {
 export interface PatientStats {
   upcomingAppointments: number;
   completedAppointments: number;
-  unreadNotifications: number;
 }

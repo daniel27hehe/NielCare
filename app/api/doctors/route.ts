@@ -90,11 +90,14 @@ export async function POST(request: NextRequest) {
     username: parsed.data.username,
     full_name: parsed.data.full_name,
     phone: parsed.data.phone || null,
+    gender: "male", // default value, required for NOT NULL constraint
     role: "doctor",
   });
 
   if (userError) {
-    return NextResponse.json({ error: userError.message }, { status: 500 });
+    // Cleanup: delete auth user if users table insert fails
+    await adminSupabase.auth.admin.deleteUser(authUser.user.id);
+    return NextResponse.json({ error: "Gagal membuat profil dokter: " + userError.message }, { status: 500 });
   }
 
   // Insert into doctors table

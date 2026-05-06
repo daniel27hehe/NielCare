@@ -15,6 +15,13 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
+ * Format number with thousands separators according to Indonesian locale (e.g. 5000000 -> "5.000.000")
+ */
+export function formatNumber(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(amount);
+}
+
+/**
  * Format date to readable string
  */
 export function formatDate(dateString: string): string {
