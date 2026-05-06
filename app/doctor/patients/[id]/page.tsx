@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,20 +28,20 @@ export default function DoctorPatientDetailPage() {
       if (!doctor) return;
       const { data: p } = await supabase.from("users").select("*").eq("id", id).single();
       if (p) setPatient(p as User);
-      const { data: appts } = await supabase.from("appointments").select(`*, service:services!appointments_service_id_fkey(*)`).eq("patient_id", id as string).eq("doctor_id", doctor.id).order("appointment_date", { ascending: false });
+      const { data: appts } = await supabase.from("appointments").select(`*`).eq("patient_id", id as string).eq("doctor_id", doctor.id).order("appointment_date", { ascending: false });
       if (appts) setAppointments(appts as Appointment[]);
       setLoading(false);
     }
     fetchData();
   }, [id]);
 
-  if (loading) return <div className="min-h-screen" style={{ background: "#f0f1f5" }}><Navbar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-green-600" /></div></div>;
+  if (loading) return <div className="min-h-screen" style={{ background: "#f0f1f5" }}><Sidebar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-green-600" /></div></div>;
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-3xl px-4 py-8 animate-fade-in">
-        <Link href="/doctor/patients"><Button variant="ghost" size="sm" className="mb-4"><ArrowLeft className="h-4 w-4" />Back</Button></Link>
+
         {patient && (
           <Card className="border-0 shadow-sm mb-6">
             <CardContent className="p-6">
@@ -58,8 +58,8 @@ export default function DoctorPatientDetailPage() {
           </Card>
         )}
         <Card className="border-0 shadow-lg rounded-3xl bg-white">
-          <CardHeader><CardTitle>Appointment History</CardTitle></CardHeader>
-          <CardContent>{appointments.length === 0 ? <p className="text-slate-500 text-center py-8">No appointments</p> : <div className="space-y-3">{appointments.map(a => <AppointmentCard key={a.id} appointment={a} linkPrefix="/doctor/appointments" showDoctor={false} />)}</div>}</CardContent>
+          <CardHeader><CardTitle>Riwayat Janji Temu</CardTitle></CardHeader>
+          <CardContent>{appointments.length === 0 ? <p className="text-slate-500 text-center py-8">Tidak ada janji temu</p> : <div className="space-y-3">{appointments.map(a => <AppointmentCard key={a.id} appointment={a} linkPrefix="/doctor/appointments" showDoctor={false} />)}</div>}</CardContent>
         </Card>
       </main>
     </div>

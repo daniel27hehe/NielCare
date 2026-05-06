@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/formatters";
-import { Loader2, Users, Calendar, DollarSign, Stethoscope, TrendingUp, BarChart3 } from "lucide-react";
+import { Loader2, Users, Calendar, Stethoscope, TrendingUp, BarChart3, Siren, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface MonthlyBreakdown {
   month: string;
@@ -21,7 +21,6 @@ export default function OwnerDashboard() {
     totalDoctors: 0,
   });
   const [monthlyBreakdown, setMonthlyBreakdown] = useState<MonthlyBreakdown[]>([]);
-  const [popularServices, setPopularServices] = useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,7 +34,6 @@ export default function OwnerDashboard() {
           totalRevenue: data.totalRevenue,
           totalDoctors: data.totalDoctors,
         });
-        setPopularServices(data.popularServices || []);
         setMonthlyBreakdown(data.monthlyBreakdown || []);
       }
       setLoading(false);
@@ -46,18 +44,18 @@ export default function OwnerDashboard() {
   if (loading)
     return (
       <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-        <Navbar />
+        <Sidebar />
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#6b21a8" }} />
         </div>
       </div>
     );
 
-  const statCards = [
-    { label: "Total Patients", value: stats.totalPatients, icon: Users, color: "text-purple-700", bg: "bg-purple-50" },
-    { label: "Total Appointments", value: stats.totalAppointments, icon: Calendar, color: "text-purple-700", bg: "bg-purple-50" },
-    { label: "Total Revenue", value: formatCurrency(stats.totalRevenue), icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Active Doctors", value: stats.totalDoctors, icon: Stethoscope, color: "text-amber-600", bg: "bg-amber-50" },
+  const stats_data = [
+    { label: "Total Pasien", value: stats.totalPatients.toString(), Icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Total Janji", value: stats.totalAppointments.toString(), Icon: Calendar, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Total Pendapatan", value: formatCurrency(stats.totalRevenue), Icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Total Dokter", value: stats.totalDoctors.toString(), Icon: Stethoscope, color: "text-orange-600", bg: "bg-orange-50" },
   ];
 
   const maxRevenue = Math.max(...monthlyBreakdown.map(m => m.revenue), 1);
@@ -65,22 +63,22 @@ export default function OwnerDashboard() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-7xl px-4 py-8 animate-fade-in">
-        <h1 className="text-3xl font-bold mb-8" style={{ color: "#6b21a8" }}>Owner Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8" style={{ color: "#6b21a8" }}>Beranda Admin</h1>
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          {statCards.map(s => (
-            <Card key={s.label} className="border-0 shadow-lg rounded-3xl bg-white">
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-widest text-slate-500 uppercase">{s.label}</p>
-                    <p className="text-2xl sm:text-3xl font-bold mt-2" style={{ color: "#6b21a8" }}>{s.value}</p>
+          {stats_data.map(s => (
+            <Card key={s.label} className="border-0 shadow-lg rounded-3xl bg-white overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold tracking-widest text-slate-500 uppercase leading-snug">{s.label}</p>
+                    <p className="text-xl sm:text-2xl xl:text-3xl font-bold mt-2" style={{ color: "#6b21a8", wordBreak: "break-word" }}>{s.value}</p>
                   </div>
-                  <div className={`p-4 rounded-2xl ${s.bg}`}>
-                    <s.icon className={`h-7 w-7 ${s.color}`} />
+                  <div className={`p-3 rounded-2xl flex items-center justify-center h-12 w-12 flex-shrink-0 ${s.bg}`}>
+                    {s.Icon && <s.Icon className={`h-6 w-6 ${s.color}`} />}
                   </div>
                 </div>
               </CardContent>
@@ -94,7 +92,7 @@ export default function OwnerDashboard() {
           <Card className="border-0 shadow-lg rounded-3xl bg-white">
             <CardHeader className="px-8 pt-8 pb-4">
               <CardTitle className="flex items-center gap-3 text-xl font-bold" style={{ color: "#6b21a8" }}>
-                <BarChart3 className="h-6 w-6 text-purple-600" />Appointments per Month
+                <BarChart3 className="h-6 w-6 text-purple-600" />Janji Temu per Bulan
               </CardTitle>
             </CardHeader>
             <CardContent className="px-8 pb-8">
@@ -120,7 +118,7 @@ export default function OwnerDashboard() {
           <Card className="border-0 shadow-lg rounded-3xl bg-white">
             <CardHeader className="px-8 pt-8 pb-4">
               <CardTitle className="flex items-center gap-3 text-xl font-bold" style={{ color: "#6b21a8" }}>
-                <TrendingUp className="h-6 w-6 text-emerald-600" />Revenue per Month
+                <TrendingUp className="h-6 w-6 text-emerald-600" />Pendapatan per Bulan
               </CardTitle>
             </CardHeader>
             <CardContent className="px-8 pb-8">
@@ -148,37 +146,35 @@ export default function OwnerDashboard() {
           <Card className="border-0 shadow-lg rounded-3xl bg-white">
             <CardHeader className="px-8 pt-8 pb-4">
               <CardTitle className="flex items-center gap-3 text-xl font-bold" style={{ color: "#6b21a8" }}>
-                <TrendingUp className="h-6 w-6 text-purple-600" />Popular Services
+                <BarChart3 className="h-6 w-6 text-purple-600" />Ringkasan Prioritas
               </CardTitle>
             </CardHeader>
             <CardContent className="px-8 pb-8">
-              {popularServices.length === 0 ? (
-                <div className="text-center py-8 bg-purple-50/50 rounded-2xl">
-                  <p className="text-slate-500 font-medium">No data yet</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {popularServices.map((s, i) => (
-                    <div key={s.name} className="flex items-center justify-between p-4 rounded-2xl bg-[#faf5ff]">
-                      <div className="flex items-center gap-4">
-                        <span className="text-lg font-bold text-purple-300">#{i + 1}</span>
-                        <span className="font-semibold text-slate-800">{s.name}</span>
-                      </div>
-                      <span className="text-sm font-bold text-purple-600">{s.count} bookings</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-4">
+                {[
+                  { label: "Prioritas", key: "Prioritas", color: "bg-red-100 text-red-700", bar: "bg-red-400", Icon: Siren },
+                  { label: "Sedang", key: "Sedang", color: "bg-amber-100 text-amber-700", bar: "bg-amber-400", Icon: AlertTriangle },
+                  { label: "Ringan", key: "Ringan", color: "bg-green-100 text-green-700", bar: "bg-green-400", Icon: CheckCircle },
+                ].map(p => (
+                  <div key={p.key} className="flex items-center gap-4 p-3 rounded-xl bg-slate-50">
+                    <span className={`flex items-center justify-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg min-w-[90px] text-center ${p.color}`}>
+                      <p.Icon className="h-3.5 w-3.5" /> {p.label}
+                    </span>
+                    <p className="text-sm text-slate-500">Tingkat prioritas penanganan</p>
+                  </div>
+                ))}
+                <p className="text-xs text-slate-400 mt-2">Tingkat prioritas ditentukan secara otomatis oleh AI berdasarkan gejala pasien.</p>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-lg rounded-3xl text-white relative overflow-hidden" style={{ background: "#6b21a8" }}>
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at right top, white, transparent 70%)" }} />
             <CardContent className="p-10 flex flex-col justify-center h-full relative z-10">
-              <DollarSign className="h-14 w-14 mb-6 text-purple-200" />
-              <p className="text-purple-200 text-sm tracking-widest uppercase font-semibold mb-2">Total Revenue</p>
+              <span className="text-5xl font-black mb-6 text-purple-200" style={{ fontFamily: 'monospace' }}>Rp</span>
+              <p className="text-purple-200 text-sm tracking-widest uppercase font-semibold mb-2">Total Pendapatan</p>
               <p className="text-5xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
-              <p className="text-purple-300 mt-4 leading-relaxed">From {stats.totalAppointments} total appointments</p>
+              <p className="text-purple-300 mt-4 leading-relaxed">Dari {stats.totalAppointments} total janji</p>
             </CardContent>
           </Card>
         </div>

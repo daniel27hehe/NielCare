@@ -7,6 +7,7 @@ const updateSchema = z.object({
   diagnosis_notes: z.string().optional(),
   treatment_given: z.string().optional(),
   medications_prescribed: z.string().optional(),
+  treatment_cost: z.number().nullable().optional(),
 });
 
 export async function GET(
@@ -28,8 +29,7 @@ export async function GET(
     .select(`
       *,
       patient:users!appointments_patient_id_fkey(*),
-      doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*)),
-      service:services!appointments_service_id_fkey(*)
+      doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*))
     `)
     .eq("id", id)
     .single();
@@ -75,7 +75,7 @@ export async function PATCH(
   // Get the appointment first using admin to bypass RLS for fetching
   const { data: appointment, error: fetchError } = await adminSupabase
     .from("appointments")
-    .select("*, doctor:doctors!appointments_doctor_id_fkey(id, user_id), service:services!appointments_service_id_fkey(base_price)")
+    .select("*, doctor:doctors!appointments_doctor_id_fkey(id, user_id)")
     .eq("id", id)
     .single();
 
@@ -100,31 +100,32 @@ export async function PATCH(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Send notification to patient
-    const notifType = parsed.data.status === "approved" ? "approval" :
-      parsed.data.status === "rejected" ? "rejection" : "system";
-    const notifTitle = parsed.data.status === "approved" ? "Appointment Approved ✅" :
-      parsed.data.status === "rejected" ? "Appointment Rejected ❌" :
-        `Appointment ${parsed.data.status}`;
 
-    await adminSupabase.from("notifications").insert({
-      user_id: appointment.patient_id,
-      title: notifTitle,
-      message: `Your appointment on ${appointment.appointment_date} has been ${parsed.data.status}.`,
-      type: notifType,
-    });
   }
 
   // Create medical record if treatment data provided
-  if (parsed.data.diagnosis_notes && parsed.data.treatment_given) {
+  if (parsed.data.diagnosis_notes && parsed.data.treatment_given && parsed.data.medications_prescribed) {
+    // Use doctor-provided cost; fall back to AI estimated cost from JSON
+    let treatmentCost = parsed.data.treatment_cost ?? 0;
+    if (!treatmentCost) {
+      try {
+        if (appointment.ai_analysis_result) {
+          const aiData = typeof appointment.ai_analysis_result === 'string'
+            ? JSON.parse(appointment.ai_analysis_result)
+            : appointment.ai_analysis_result;
+          treatmentCost = aiData?.estimatedCost || 0;
+        }
+      } catch { treatmentCost = 0; }
+    }
+
     const { error: upsertError } = await adminSupabase.from("medical_records").upsert({
       appointment_id: id,
       patient_id: appointment.patient_id,
       doctor_id: appointment.doctor.id,
       diagnosis_notes: parsed.data.diagnosis_notes,
       treatment_given: parsed.data.treatment_given,
-      medications_prescribed: parsed.data.medications_prescribed || null,
-      treatment_cost: appointment.service?.base_price || 0,
+      medications_prescribed: parsed.data.medications_prescribed,
+      treatment_cost: treatmentCost,
     }, {
       onConflict: "appointment_id",
     });
@@ -145,13 +146,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Failed to mark as done" }, { status: 500 });
     }
 
-    // Notify patient
-    await adminSupabase.from("notifications").insert({
-      user_id: appointment.patient_id,
-      title: "Treatment Completed ✅",
-      message: "Your treatment record has been updated. You can view the details in your appointment history.",
-      type: "system",
-    });
+
   }
 
   return NextResponse.json({ success: true });

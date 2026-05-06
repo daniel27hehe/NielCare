@@ -1,74 +1,186 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Simple in-memory circuit-breaker for upstream Gemini API rate-limit protection
-const CIRCUIT_THRESHOLD = 3; // number of consecutive rate-limit failures before opening circuit
-const CIRCUIT_BASE_COOLDOWN_MS = 60_000; // base cooldown 60s, doubles each additional failure
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_BASE_COOLDOWN_MS = 60_000;
 let aiFailureCount = 0;
-let aiCircuitOpenUntil = 0; // timestamp (ms) until which circuit is open
+let aiCircuitOpenUntil = 0;
 
-// Simple heuristic fallback for when the AI service is unavailable.
-const heuristicAnalysis = (symptomsText: string | undefined, svc?: string) => {
+const VALID_SPECIALIZATIONS = [
+  "General Dentist",
+  "Orthodontist",
+  "Periodontist",
+  "Endodontist",
+  "Prosthodontist",
+  "Oral Surgeon",
+  "Pediatric Dentist",
+];
+
+// Simple heuristic fallback untuk ketika AI tidak tersedia.
+const heuristicAnalysis = (symptomsText: string | undefined) => {
   const s = (symptomsText || "").toLowerCase();
-  const criticalPattern = /severe|unbearable|excruciating|heavy bleeding|bleeding|pus|abscess|swelling|lost consciousness|difficulty breathing|intense pain/;
-  const moderatePattern = /sharp pain|throbbing|fever|infection|sensitivity|persistent pain|moderate pain|swollen|pain when chewing/;
 
-  if (criticalPattern.test(s)) {
+  // Deteksi gejala orthodontic
+  if (/behel|kawat gigi|gigi bengkok|gigi miring|gigi rapi|maloklusi|gigitan|gigi tidak rata/.test(s)) {
     return {
-      emergencyLevel: "critical",
-      reason: "Symptoms indicate a possible severe dental emergency.",
-      recommendation: "Seek immediate urgent care or ER if bleeding or severe pain persists."
+      emergencyLevel: "routine",
+      possibleCondition: "Maloklusi / Gigi Tidak Rata",
+      reason: "Gejala menunjukkan masalah keselarasan gigi yang memerlukan penanganan ortodontik.",
+      recommendation: "Konsultasikan dengan dokter ortodontis untuk evaluasi pemasangan behel atau aligner.",
+      estimatedCost: 500000,
+      estimatedCostLabel: "Rp 500.000 – Rp 2.000.000",
+      recommendedSpecialization: "Orthodontist",
     };
   }
 
+  // Deteksi gejala anak-anak
+  if (/anak|gigi susu|gigi bayi|balita/.test(s)) {
+    return {
+      emergencyLevel: "moderate",
+      possibleCondition: "Masalah Gigi Anak",
+      reason: "Gejala pada anak memerlukan penanganan dokter gigi anak yang berpengalaman.",
+      recommendation: "Kunjungi dokter gigi anak untuk pemeriksaan dan perawatan yang sesuai usia.",
+      estimatedCost: 200000,
+      estimatedCostLabel: "Rp 150.000 – Rp 400.000",
+      recommendedSpecialization: "Pediatric Dentist",
+    };
+  }
+
+  // Deteksi gejala darurat / parah
+  const criticalPattern = /parah|tidak tertahankan|berdarah banyak|nanah|abses|bengkak parah|sesak|pingsan|nyeri hebat|gusi bernanah|sakit banget|sakit sekali|unbearable|severe|bleeding/;
+  if (criticalPattern.test(s)) {
+    return {
+      emergencyLevel: "critical",
+      possibleCondition: "Kedaruratan Gigi (Abses / Nyeri Akut)",
+      reason: "Gejala mengindikasikan kemungkinan kondisi darurat gigi yang memerlukan penanganan segera.",
+      recommendation: "Segera kunjungi klinik atau IGD jika perdarahan atau nyeri parah tidak berhenti.",
+      estimatedCost: 750000,
+      estimatedCostLabel: "Rp 500.000 – Rp 1.500.000",
+      recommendedSpecialization: "Oral Surgeon",
+    };
+  }
+
+  // Deteksi gejala saraf gigi / perawatan saluran akar
+  const endoPattern = /saraf gigi|saluran akar|gigi berlubang dalam|nyeri berdenyut|ngilu dalam|peka panas dingin|sensitive/;
+  if (endoPattern.test(s)) {
+    return {
+      emergencyLevel: "moderate",
+      possibleCondition: "Infeksi Pulpa / Gigi Berlubang Dalam",
+      reason: "Gejala menunjukkan kemungkinan masalah pada saraf atau pulpa gigi yang perlu ditangani.",
+      recommendation: "Segera hubungi klinik untuk janji lebih awal. Gunakan obat pereda nyeri sementara.",
+      estimatedCost: 400000,
+      estimatedCostLabel: "Rp 300.000 – Rp 800.000",
+      recommendedSpecialization: "Endodontist",
+    };
+  }
+
+  // Deteksi gejala gusi
+  const perioPattern = /gusi berdarah|gusi bengkak|karang gigi|bau mulut|gusi turun|periodontitis|gingivitis|scaling/;
+  if (perioPattern.test(s)) {
+    return {
+      emergencyLevel: "moderate",
+      possibleCondition: "Penyakit Gusi (Gingivitis / Periodontitis)",
+      reason: "Gejala menunjukkan kemungkinan penyakit gusi yang perlu perhatian medis.",
+      recommendation: "Hubungi klinik untuk pembersihan karang gigi dan pemeriksaan gusi.",
+      estimatedCost: 200000,
+      estimatedCostLabel: "Rp 150.000 – Rp 500.000",
+      recommendedSpecialization: "Periodontist",
+    };
+  }
+
+  // Deteksi gejala prostodontik
+  const prostoPattern = /gigi palsu|mahkota gigi|implan|gigi copot|tambal lepas|veneer|crown|bridge/;
+  if (prostoPattern.test(s)) {
+    return {
+      emergencyLevel: "routine",
+      possibleCondition: "Restorasi Gigi / Protesis",
+      reason: "Gejala menunjukkan kebutuhan restorasi atau protesis gigi.",
+      recommendation: "Konsultasikan dengan dokter spesialis prostodontik untuk rencana perawatan.",
+      estimatedCost: 500000,
+      estimatedCostLabel: "Rp 300.000 – Rp 1.500.000",
+      recommendedSpecialization: "Prosthodontist",
+    };
+  }
+
+  // Moderate: nyeri sedang, infeksi ringan
+  const moderatePattern = /nyeri|sakit gigi|infeksi|gigi berlubang|ngilu|sensitive|berdenyut|demam|bengkak/;
   if (moderatePattern.test(s)) {
     return {
       emergencyLevel: "moderate",
-      reason: "Symptoms suggest a significant dental issue that may need prompt attention.",
-      recommendation: "Contact the clinic for an earlier appointment and consider pain relief measures."
+      possibleCondition: "Masalah Gigi Sedang (Karies / Infeksi Ringan)",
+      reason: "Gejala menunjukkan masalah gigi yang perlu mendapat perhatian dalam waktu dekat.",
+      recommendation: "Hubungi klinik untuk penjadwalan lebih awal dan gunakan obat pereda nyeri sementara.",
+      estimatedCost: 250000,
+      estimatedCostLabel: "Rp 200.000 – Rp 600.000",
+      recommendedSpecialization: "General Dentist",
     };
   }
 
   return {
     emergencyLevel: "routine",
-    reason: "Symptoms appear non-urgent based on the provided description.",
-    recommendation: "Schedule a regular appointment and use over-the-counter remedies as needed."
+    possibleCondition: "Pemeriksaan Gigi Rutin",
+    reason: "Gejala yang disampaikan tergolong ringan dan tidak memerlukan penanganan darurat.",
+    recommendation: "Jadwalkan pemeriksaan rutin. Gunakan obat kumur antiseptik dan jaga kebersihan mulut.",
+    estimatedCost: 150000,
+    estimatedCostLabel: "Rp 100.000 – Rp 300.000",
+    recommendedSpecialization: "General Dentist",
   };
 };
 
 export async function POST(req: NextRequest) {
   let symptoms = "";
-  let serviceName = "";
   let providerName = "AI";
   let timeoutMs = 30000;
 
   try {
     const body = await req.json();
     symptoms = body.symptoms;
-    serviceName = body.serviceName;
 
-    if (!symptoms || !serviceName) {
+    if (!symptoms) {
       return NextResponse.json(
-        { error: "Symptoms and serviceName are required" },
+        { isValidSymptom: false, rejectionReason: "Keluhan tidak boleh kosong." },
         { status: 400 }
       );
     }
 
-    // Support NVAPI (NVIDIA Integrate) as alternative to Gemini.
+    // ── Backend heuristic pre-validation (fast, before hitting AI) ──────────
+    const trimmed = symptoms.trim();
+    const REJECT_PATTERNS = [
+      { re: /^(tes|test|testing|halo|hallo|hello|hi|hai|hey|yo|hei)\b/i, msg: "Input terdeteksi sebagai sapaan/tes, bukan keluhan gigi." },
+      { re: /^(coba|cobain|try|cek|check)\b/i, msg: "Input terdeteksi sebagai percobaan, bukan keluhan gigi." },
+      { re: /^(asd|qwe|zxc|asdf|qwerty|abc|xxx|zzz)/i, msg: "Input tidak dapat dikenali. Harap ceritakan keluhan gigi Anda." },
+      { re: /^[\d\s\W]+$/, msg: "Input hanya berisi angka atau karakter khusus. Harap ceritakan keluhan gigi Anda." },
+    ];
+    for (const { re, msg } of REJECT_PATTERNS) {
+      if (re.test(trimmed)) {
+        console.warn('[AI] Rejected by heuristic pre-validation:', trimmed.slice(0, 50));
+        return NextResponse.json(
+          { isValidSymptom: false, rejectionReason: msg },
+          { status: 422 }
+        );
+      }
+    }
+    if (trimmed.split(/\s+/).filter(w => w.length > 1).length < 2) {
+      return NextResponse.json(
+        { isValidSymptom: false, rejectionReason: "Keluhan terlalu singkat. Harap ceritakan gejala Anda lebih detail." },
+        { status: 422 }
+      );
+    }
+
+    // Support NVAPI as alternative to Gemini
     const nvApiKey = process.env.NVAPI_KEY;
     const useNv = !!nvApiKey;
     const apiKey = useNv ? nvApiKey : process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[AI] No GEMINI_API_KEY or NVAPI_KEY present - using heuristic fallback');
-      return NextResponse.json(heuristicAnalysis(symptoms, serviceName));
+      return NextResponse.json(heuristicAnalysis(symptoms));
     }
 
-    // Gemini settings (only used if NVAPI not provided)
     const geminiModel = process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const geminiApiVersion = process.env.GEMINI_API_VERSION || "v1beta";
     timeoutMs = parseInt(process.env.GEMINI_FETCH_TIMEOUT_MS || "30000", 10);
     if (timeoutMs < 5000) timeoutMs = 5000;
 
-    // NVAPI settings
     const nvBaseUrl = process.env.NVAPI_BASE_URL || "https://integrate.api.nvidia.com/v1";
     let nvModel = process.env.NVAPI_MODEL || process.env.NVAPI_DEFAULT_MODEL || "deepseek-ai/deepseek-r1";
     const nvFallbackEnv = process.env.NVAPI_FALLBACK_MODELS || '';
@@ -78,44 +190,61 @@ export async function POST(req: NextRequest) {
       'mistralai/mistral-7b-instruct-v0.3'
     ];
 
-    // Circuit-breaker short-circuits requests if upstream has been rate-limiting
     if (Date.now() < aiCircuitOpenUntil) {
       const retrySecs = Math.ceil((aiCircuitOpenUntil - Date.now()) / 1000);
       console.warn(`[AI] Circuit open. Returning fallback. Retry after ${retrySecs}s`);
       return NextResponse.json({
-        emergencyLevel: "routine",
-        reason: `AI temporarily unavailable due to repeated rate limits. Try again in ${retrySecs} seconds.`,
-        recommendation: "Please proceed with normal booking.",
+        ...heuristicAnalysis(symptoms),
         retryAfterSeconds: retrySecs,
       }, { status: 503 });
     }
 
     providerName = useNv ? 'NVAPI' : 'Gemini';
-    console.log(`[AI] Initializing API call`, { provider: providerName, timeoutMs, keyPreview: apiKey.substring(0, 10) + '...' });
+    console.log(`[AI] Initializing API call`, { provider: providerName, timeoutMs });
 
-    const prompt = `You are an AI dental assistant. Analyze the following patient symptoms for a dental booking.
-Service requested: ${serviceName}
-Symptoms: ${symptoms}
+    const prompt = `Kamu adalah asisten AI klinik gigi yang HANYA bertugas menganalisis keluhan dan gejala gigi atau mulut.
 
-Determine the emergency level. It MUST be one of: "critical", "moderate", or "routine".
+Pasien mengirimkan input berikut:
+"${symptoms}"
 
-Also provide a short reason (max 2 sentences) and a brief recommendation (e.g., "Take pain relievers while waiting", "Go to ER if bleeding doesn't stop").
+LANGKAH 1 — VALIDASI INPUT:
+Periksa apakah input di atas merupakan keluhan atau gejala yang berkaitan dengan kesehatan gigi dan mulut.
+Tolak input jika:
+- Input adalah sapaan, tes, kata acak, atau teks tidak bermakna (contoh: "hallo", "tes", "asdf", "coba")
+- Input adalah pertanyaan atau permintaan yang tidak berkaitan dengan gejala gigi (contoh: "berapa harga emas?", "siapa presiden?", "tolong buatkan essay")
+- Input adalah kalimat umum yang tidak menyebutkan gejala, rasa sakit, keluhan, atau kondisi terkait gigi/mulut
+- Input terlalu singkat atau tidak jelas untuk dianalisis sebagai keluhan kesehatan
 
-Return ONLY a valid JSON object matching this schema exactly:
+Jika input TIDAK VALID, kembalikan JSON:
 {
-  "emergencyLevel": "critical" | "moderate" | "routine",
-  "reason": "string",
-  "recommendation": "string"
-}`;
+  "isValidSymptom": false,
+  "rejectionReason": "[jelaskan dalam 1 kalimat Bahasa Indonesia mengapa ditolak dan apa yang seharusnya diinput]"
+}
 
-    // Prepare request target and body depending on provider
+LANGKAH 2 — JIKA INPUT VALID, analisis keluhan dan kembalikan JSON:
+{
+  "isValidSymptom": true,
+  "emergencyLevel": "critical" | "moderate" | "routine",
+  "possibleCondition": "nama kondisi gigi dalam Bahasa Indonesia",
+  "reason": "1-2 kalimat penjelasan diagnosis dalam Bahasa Indonesia",
+  "recommendation": "saran tindakan singkat dalam Bahasa Indonesia",
+  "estimatedCost": <angka estimasi biaya dalam Rupiah, contoh: 350000>,
+  "estimatedCostLabel": "Rp XXX.XXX – Rp XXX.XXX",
+  "recommendedSpecialization": <salah satu dari: "General Dentist", "Orthodontist", "Periodontist", "Endodontist", "Prosthodontist", "Oral Surgeon", "Pediatric Dentist">
+}
+
+Petunjuk emergencyLevel:
+- "critical" = darurat: perdarahan hebat, abses, nyeri tak tertahankan, pembengkakan parah
+- "moderate" = segera: infeksi, gigi berlubang dalam, bengkak sedang, nyeri yang mengganggu
+- "routine" = rutin: kontrol berkala, behel, keluhan ringan, tidak ada rasa sakit
+
+Kembalikan HANYA objek JSON yang valid, tanpa teks tambahan apapun.`;
+
     const geminiUrl = `https://generativelanguage.googleapis.com/${geminiApiVersion}/models/${geminiModel}:generateContent?key=${apiKey}`;
     const nvUrl = `${nvBaseUrl}/chat/completions`;
-    console.log(`[AI] Prepared request to: ${useNv ? nvUrl.replace(apiKey, '***') : geminiUrl.replace(apiKey, '***')}`);
 
-    // Retry logic for transient failures (503, 500, network errors)
     const maxAttempts = 3;
-    const baseDelay = 500; // ms
+    const baseDelay = 500;
     let attempt = 0;
     let lastError: any = null;
     let data: any = null;
@@ -125,14 +254,11 @@ Return ONLY a valid JSON object matching this schema exactly:
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        console.log(`[AI] ${providerName} Attempt ${attempt + 1} sending request (timeout ${timeoutMs}ms)`);
+        console.log(`[AI] ${providerName} Attempt ${attempt + 1} (timeout ${timeoutMs}ms)`);
         const fetchUrl = useNv ? nvUrl : geminiUrl;
         const fetchOpts: RequestInit = useNv ? {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           body: JSON.stringify({
             model: nvModel,
             messages: [{ role: 'user', content: prompt }],
@@ -141,98 +267,46 @@ Return ONLY a valid JSON object matching this schema exactly:
           }),
         } : {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [ { parts: [{ text: prompt }] } ],
+            contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
           }),
         };
 
         const response = await fetch(fetchUrl, { ...fetchOpts, signal: controller.signal });
-
         clearTimeout(timeoutId);
-
-        console.log(`[AI] ${providerName} Response status: ${response.status}`);
+        console.log(`[AI] ${providerName} Response: ${response.status}`);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`[${providerName} API] Error response:`, {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText,
-          });
-
-          // If service unavailable or server error, retry with backoff
           if (response.status === 503 || response.status === 500 || response.status === 504) {
-            lastError = new Error(`Server error ${response.status}: ${response.statusText}`);
-            // respect Retry-After header if present
-            const retryAfter = response.headers.get?.('Retry-After');
-            const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
-            console.warn(`[AI] ${providerName} Retrying after ${waitMs}ms due to server error`);
+            lastError = new Error(`Server error ${response.status}`);
+            const waitMs = baseDelay * Math.pow(2, attempt);
             await new Promise((res) => setTimeout(res, waitMs));
-            continue; // next attempt
+            continue;
           }
-
-          // Handle model EOL for NVAPI (410) by trying fallback models
           if (response.status === 410 && useNv) {
-            console.warn(`[AI] ${providerName} model ${nvModel} returned 410 Gone - trying fallback model if available`);
             const nextModel = fallbackModels.shift();
-            if (nextModel) {
-              nvModel = nextModel;
-              console.warn(`[AI] Switching NVAPI model to ${nvModel} and retrying`);
-              // small backoff before retry
-              await new Promise((res) => setTimeout(res, baseDelay * 2));
-              continue; // retry with new model
-            }
-            console.error(`[AI] No NVAPI fallback models available; returning heuristic fallback`);
-            return NextResponse.json({
-              ...heuristicAnalysis(symptoms, serviceName),
-              reason: `NVAPI model ${nvModel} is unavailable and no fallback models configured.`,
-            }, { status: 410 });
+            if (nextModel) { nvModel = nextModel; continue; }
+            return NextResponse.json(heuristicAnalysis(symptoms), { status: 410 });
           }
-
-          // Non-retriable errors: authentication, bad request, rate limiting -> surface error
-          if (response.status === 400) {
-            throw new Error(`Bad request: Invalid API call format (${response.statusText}) - ${errorText}`);
-            } else if (response.status === 401 || response.status === 403) {
-            throw new Error(`Authentication failed: Check your API key (Status ${response.status}) - ${errorText}`);
-          } else if (response.status === 429) {
-            // Upstream rate limit - open circuit and return heuristic fallback to client
+          if (response.status === 429) {
             aiFailureCount = Math.min(aiFailureCount + 1, 10);
             const extraFailures = Math.max(0, aiFailureCount - CIRCUIT_THRESHOLD + 1);
             const cooldownMs = CIRCUIT_BASE_COOLDOWN_MS * Math.pow(2, Math.max(0, extraFailures - 1));
             aiCircuitOpenUntil = Date.now() + cooldownMs;
-            const retrySecs = Math.ceil(cooldownMs / 1000);
-            console.warn(`[AI] ${providerName} Received 429. Opening circuit for ${retrySecs}s (failureCount=${aiFailureCount})`);
-            return NextResponse.json({
-              ...heuristicAnalysis(symptoms, serviceName),
-              retryAfterSeconds: retrySecs,
-            }, { status: 429 });
-          } else {
-            throw new Error(`${providerName} API returned status ${response.status}: ${response.statusText} - ${errorText}`);
+            return NextResponse.json({ ...heuristicAnalysis(symptoms), retryAfterSeconds: Math.ceil(cooldownMs / 1000) }, { status: 429 });
           }
+          throw new Error(`${providerName} API error ${response.status}: ${errorText}`);
         }
 
         data = await response.json();
-        // Reset failure counter on success
         aiFailureCount = 0;
         aiCircuitOpenUntil = 0;
-        break; // success
+        break;
       } catch (err: any) {
         clearTimeout(timeoutId);
-        // Handle AbortError (timeout) as transient
-        if (err?.name === 'AbortError') {
-          console.warn(`[AI][${providerName}] Attempt ${attempt + 1} aborted due to timeout`);
-          lastError = err;
-          const waitMs = baseDelay * Math.pow(2, attempt);
-          await new Promise((res) => setTimeout(res, waitMs));
-          continue;
-        }
-
-        // Network or other transient errors -> retry
-        console.error(`[AI][${providerName}] Attempt ${attempt + 1} failed:`, err?.message || err);
         lastError = err;
         const waitMs = baseDelay * Math.pow(2, attempt);
         await new Promise((res) => setTimeout(res, waitMs));
@@ -242,67 +316,49 @@ Return ONLY a valid JSON object matching this schema exactly:
 
     if (!data) {
       console.error(`[AI][${providerName}] All attempts failed:`, lastError);
-      // Fall back to heuristic analysis so booking flow isn't blocked
-      const fallback = heuristicAnalysis(symptoms, serviceName);
-      return NextResponse.json(fallback, { status: 200 });
+      return NextResponse.json(heuristicAnalysis(symptoms), { status: 200 });
     }
-    console.log(`[AI][${providerName}] Response data received, processing...`);
 
     const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content;
-
-    if (!textResult) {
-      console.error(`[AI][${providerName}] No text in response:`, data);
-      throw new Error("No text returned from AI provider");
-    }
+    if (!textResult) throw new Error("Tidak ada teks dari provider AI");
 
     let parsedResult;
     try {
       parsedResult = JSON.parse(textResult);
     } catch (e) {
-      console.error(`[AI][${providerName}] Failed to parse JSON response:`, textResult);
-      throw new Error("Invalid JSON from AI provider");
+      console.error(`[AI][${providerName}] Gagal parse JSON:`, textResult);
+      throw new Error("JSON tidak valid dari provider AI");
     }
 
-    console.log(`[AI][${providerName}] Successfully parsed result:`, parsedResult);
+    // Validate recommendedSpecialization
+    const recSpec = parsedResult.recommendedSpecialization;
+    const validSpec = VALID_SPECIALIZATIONS.includes(recSpec) ? recSpec : "General Dentist";
+
+    // AI rejected the input as non-dental
+    if (parsedResult.isValidSymptom === false) {
+      console.warn('[AI] Input rejected by AI as non-dental symptom');
+      return NextResponse.json(
+        { isValidSymptom: false, rejectionReason: parsedResult.rejectionReason || "Input tidak dikenali sebagai keluhan gigi. Harap ceritakan gejala gigi atau mulut yang Anda rasakan." },
+        { status: 422 }
+      );
+    }
 
     return NextResponse.json({
+      isValidSymptom: true,
       emergencyLevel: parsedResult.emergencyLevel || "routine",
-      reason: parsedResult.reason || "Analysis complete.",
-      recommendation: parsedResult.recommendation || "Proceed with booking.",
+      possibleCondition: parsedResult.possibleCondition || "Masalah Gigi Umum",
+      reason: parsedResult.reason || "Analisis selesai.",
+      recommendation: parsedResult.recommendation || "Lanjutkan dengan booking.",
+      estimatedCost: parsedResult.estimatedCost || 150000,
+      estimatedCostLabel: parsedResult.estimatedCostLabel || "Rp 100.000 – Rp 300.000",
+      recommendedSpecialization: validSpec,
     });
   } catch (error: any) {
-    console.error(`[AI][${providerName}] Error encountered:`, {
-      message: error?.message,
-      code: error?.code,
-      name: error?.name,
-      stack: error?.stack?.split('\n')[0]  // First line of stack trace
-    });
-
-    // Specific error handling
-    let reason = "AI Analysis encountered an error.";
-    let recommendation = "Please proceed with your booking normally.";
-
-    if (error?.name === 'AbortError') {
-      reason = "AI Analysis timed out - took too long to respond.";
-      console.error(`[AI][${providerName}] REQUEST TIMEOUT after ${timeoutMs}ms`);
-    } else if (error?.message?.includes('Rate limit')) {
-      reason = "Too many AI requests. Please try again later.";
-    } else if (error?.message?.includes('Authentication')) {
-      reason = "AI system authentication issue. Please try again.";
-      console.error(`[AI][${providerName}] AUTHENTICATION ERROR - Check your API key!`);
-    } else if (error?.message?.includes('Bad request')) {
-      reason = "AI request format error. This is a server configuration issue.";
-      console.error(`[AI][${providerName}] BAD REQUEST - API format may have changed`);
-    } else if (error?.message?.includes('server error')) {
-      reason = "Gemini AI server is having issues. Please try again later.";
-    }
-
-    // Graceful heuristic fallback so the booking isn't blocked if AI fails
-    const heuristic = heuristicAnalysis(symptoms, serviceName);
+    console.error(`[AI][${providerName}] Error:`, error?.message);
+    const heuristic = heuristicAnalysis(symptoms);
     return NextResponse.json({
       ...heuristic,
-      reason: `${reason} (Fallback applied)`,
-      debug: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      reason: `Terjadi kesalahan pada AI. Menggunakan analisis fallback. ${heuristic.reason}`,
     });
   }
 }

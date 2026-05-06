@@ -5,9 +5,16 @@
 export type UserRole = 'patient' | 'doctor' | 'owner';
 export type Gender = 'male' | 'female';
 export type AppointmentStatus = 'pending' | 'approved' | 'rejected' | 'done' | 'cancelled';
+// EmergencyLevel internal values: 'critical'=Prioritas, 'moderate'=Sedang, 'routine'=Ringan
 export type EmergencyLevel = 'critical' | 'moderate' | 'routine';
-export type ServiceCategory = 'emergency' | 'procedure' | 'routine' | 'orthodontic';
 export type NotificationType = 'booking' | 'approval' | 'rejection' | 'system';
+
+// Human-readable label map for emergency levels
+export const EMERGENCY_LEVEL_LABELS: Record<EmergencyLevel, string> = {
+  critical: 'Prioritas',
+  moderate: 'Sedang',
+  routine: 'Ringan',
+};
 
 export interface User {
   id: string;
@@ -32,15 +39,7 @@ export interface Doctor {
   user?: User;
 }
 
-export interface Service {
-  id: string;
-  name: string;
-  description?: string;
-  category: ServiceCategory;
-  duration_minutes: number;
-  base_price: number;
-  is_active: boolean;
-}
+// Service interface removed — services concept has been replaced by AI symptom analysis
 
 export interface DoctorSchedule {
   id: string;
@@ -56,18 +55,18 @@ export interface Appointment {
   id: string;
   patient_id: string;
   doctor_id: string;
-  service_id: string;
+  service_id?: string | null;
   appointment_date: string;
   slot_time: string;
   status: AppointmentStatus;
   symptom_description?: string;
   emergency_level: EmergencyLevel;
   ai_analysis_result?: string;
+  estimated_cost?: number | null;
   created_at: string;
   // Joined data
   patient?: User;
   doctor?: Doctor;
-  service?: Service;
 }
 
 export interface MedicalRecord {
@@ -99,7 +98,6 @@ export interface Notification {
 // Booking flow state
 export interface BookingState {
   step: number;
-  service?: Service;
   symptoms?: string;
   emergencyLevel?: EmergencyLevel;
   aiAnalysis?: AIAnalysisResult;
@@ -110,8 +108,12 @@ export interface BookingState {
 
 export interface AIAnalysisResult {
   emergencyLevel: EmergencyLevel;
+  possibleCondition: string;
   reason: string;
   recommendation: string;
+  estimatedCost: number;
+  estimatedCostLabel: string;
+  recommendedSpecialization?: string;
 }
 
 // Dashboard stats
@@ -122,7 +124,6 @@ export interface OwnerStats {
   totalDoctors: number;
   appointmentsByDay: { date: string; count: number }[];
   revenueByMonth: { month: string; revenue: number }[];
-  popularServices: { name: string; count: number }[];
   doctorPerformance: { name: string; appointments: number; revenue: number }[];
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
@@ -12,7 +12,6 @@ import { Loader2, Calendar, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function DoctorSchedulePage() {
-  const router = useRouter();
   const supabase = createClient();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +24,7 @@ export default function DoctorSchedulePage() {
       if (!user) return;
       const { data: doctor } = await supabase.from("doctors").select("id").eq("user_id", user.id).single();
       if (!doctor) return;
-      const { data } = await supabase.from("appointments").select(`*, patient:users!appointments_patient_id_fkey(*), service:services!appointments_service_id_fkey(*)`).eq("doctor_id", doctor.id).eq("appointment_date", selectedDate).in("status", ["pending", "approved"]).order("slot_time", { ascending: true });
+      const { data } = await supabase.from("appointments").select(`*, patient:users!appointments_patient_id_fkey(*)`).eq("doctor_id", doctor.id).eq("appointment_date", selectedDate).in("status", ["pending", "approved"]).order("slot_time", { ascending: true });
       if (data) setAppointments(data as Appointment[]);
       setLoading(false);
     }
@@ -34,13 +33,10 @@ export default function DoctorSchedulePage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-4xl px-4 py-8 animate-fade-in">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold" style={{ color: "#1e40af" }}>My Schedule</h1>
-          <Button variant="outline" size="sm" onClick={() => router.push("/doctor/dashboard")} className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold" style={{ color: "#1e40af" }}>Jadwal Saya</h1>
         </div>
         <div className="mb-6">
           <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="max-w-xs rounded-xl border-blue-100 focus:ring-blue-500" />
@@ -49,7 +45,7 @@ export default function DoctorSchedulePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" style={{ color: "#1e40af" }} />
-              <span style={{ color: "#1e40af" }}>Appointments for {selectedDate}</span>
+              <span style={{ color: "#1e40af" }}>Janji Temu untuk {selectedDate}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -58,7 +54,7 @@ export default function DoctorSchedulePage() {
             ) : appointments.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No appointments on this date</p>
+                <p className="text-slate-500">Tidak ada janji temu pada tanggal ini</p>
               </div>
             ) : (
               <div className="space-y-3">{appointments.map(a => <AppointmentCard key={a.id} appointment={a} linkPrefix="/doctor/appointments" showPatient showDoctor={false} />)}</div>

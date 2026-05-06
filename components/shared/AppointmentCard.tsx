@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge, EmergencyBadge } from "@/components/shared/StatusBadge";
 import { formatDate, formatTime } from "@/lib/utils/formatters";
 import type { Appointment } from "@/types";
-import { Calendar, Clock, User, Stethoscope } from "lucide-react";
+import { Calendar, Clock, User, Stethoscope, Brain } from "lucide-react";
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -18,16 +18,34 @@ export function AppointmentCard({
   showPatient = false,
   showDoctor = true,
 }: AppointmentCardProps) {
+  // Try to extract possibleCondition from AI analysis result
+  let possibleCondition: string | null = null;
+  try {
+    if (appointment.ai_analysis_result) {
+      const ai = typeof appointment.ai_analysis_result === 'string'
+        ? JSON.parse(appointment.ai_analysis_result)
+        : appointment.ai_analysis_result;
+      possibleCondition = ai?.possibleCondition || null;
+    }
+  } catch {
+    possibleCondition = null;
+  }
+
+  const title = possibleCondition || appointment.symptom_description?.slice(0, 50) || "Dental Appointment";
+
   return (
     <Link href={`${linkPrefix}/${appointment.id}`}>
       <Card className="hover:shadow-lg hover:border-green-200 transition-all duration-300 cursor-pointer group">
         <CardContent className="p-5">
           <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="font-semibold text-slate-900 group-hover:text-green-700 transition-colors">
-                {appointment.service?.name || "Dental Service"}
-              </h3>
-              <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+            <div className="flex-1 min-w-0 mr-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-semibold text-slate-900 group-hover:text-green-700 transition-colors truncate">
+                  {title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
                   {formatDate(appointment.appointment_date)}
@@ -38,7 +56,7 @@ export function AppointmentCard({
                 </span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <StatusBadge status={appointment.status} />
               {(() => {
                 try {
@@ -75,7 +93,7 @@ export function AppointmentCard({
 
           {appointment.symptom_description && (
             <p className="text-xs text-slate-400 mt-2 line-clamp-1">
-              Symptoms: {appointment.symptom_description}
+              Gejala: {appointment.symptom_description}
             </p>
           )}
         </CardContent>

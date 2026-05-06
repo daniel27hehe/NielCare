@@ -21,6 +21,7 @@ function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get("role") || "patient";
+  const message = searchParams.get("message");
 
   const supabase = createClient();
   const [showPassword, setShowPassword] = useState(false);
@@ -100,6 +101,13 @@ function LoginFormContent() {
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 mb-4">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
+            </div>
+          )}
+
+          {message && !error && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {message}
             </div>
           )}
 

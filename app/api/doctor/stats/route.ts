@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
     "01"
   ].join("-");
 
-  // Fetch all appointments for this doctor (with service for price lookup)
+  // Fetch all appointments for this doctor, including medical_records for actual cost
   const { data: appointments } = await adminSupabase
     .from("appointments")
-    .select("id, patient_id, appointment_date, status, service:services!appointments_service_id_fkey(base_price)")
+    .select("id, patient_id, appointment_date, status, ai_analysis_result, medical_records(treatment_cost)")
     .eq("doctor_id", doctor.id);
 
   const all = appointments || [];
@@ -54,10 +54,14 @@ export async function GET(request: NextRequest) {
     a => a.status === "done" && a.appointment_date >= monthStart
   ).length;
 
-  // Earnings this month: sum of service.base_price for done appointments this month
+  // Earnings this month: use actual treatment_cost from medical_records
   const earningsThisMonth = all
     .filter(a => a.status === "done" && a.appointment_date >= monthStart)
-    .reduce((sum, a) => sum + ((a.service as any)?.base_price || 0), 0);
+    .reduce((sum, a: any) => {
+      const records = Array.isArray(a.medical_records) ? a.medical_records : [a.medical_records];
+      const cost = records[0]?.treatment_cost || 0;
+      return sum + cost;
+    }, 0);
 
   // Unique patients
   const uniquePatientIds = [...new Set(all.map(a => a.patient_id))];

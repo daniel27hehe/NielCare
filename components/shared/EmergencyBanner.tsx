@@ -13,10 +13,10 @@ export function EmergencyBanner({ message }: EmergencyBannerProps) {
         </div>
         <div>
           <h4 className="text-sm font-semibold text-red-800">
-            🚨 Critical Emergency Detected
+            Darurat Medis Kritis
           </h4>
           <p className="text-sm text-red-600 mt-0.5">
-            {message || "This appointment has been flagged as critical. Immediate attention recommended."}
+            {message || "Janji temu ini ditandai sebagai kritis. Disarankan penanganan segera."}
           </p>
         </div>
       </div>

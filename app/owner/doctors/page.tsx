@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,6 @@ const SPECIALIZATIONS = [
 ];
 
 export default function OwnerDoctorsPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,35 +69,32 @@ export default function OwnerDoctorsPage() {
     setSaving(false);
   };
 
-  if (loading) return <div className="min-h-screen" style={{ background: "#f0f1f5" }}><Navbar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "#6b21a8" }} /></div></div>;
+  if (loading) return <div className="min-h-screen" style={{ background: "#f0f1f5" }}><Sidebar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "#6b21a8" }} /></div></div>;
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-4xl px-4 py-8 animate-fade-in">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold" style={{ color: "#6b21a8" }}>Manage Doctors</h1>
-          <Button variant="outline" size="sm" onClick={() => router.push("/owner/dashboard")} className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold" style={{ color: "#6b21a8" }}>Daftar Dokter</h1>
         </div>
         <div className="flex items-center justify-end mb-6">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button className="rounded-xl text-white" style={{ background: "#6b21a8" }}><Plus className="h-4 w-4 mr-2" />Add Doctor</Button></DialogTrigger>
+            <DialogTrigger asChild><Button className="rounded-xl text-white" style={{ background: "#6b21a8" }}><Plus className="h-4 w-4 mr-2" />Tambah Dokter</Button></DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Add New Doctor</DialogTitle><DialogDescription>Create a doctor account. They&apos;ll be able to login immediately.</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle>Tambah Dokter Baru</DialogTitle><DialogDescription>Buat akun dokter. Mereka akan bisa langsung masuk (login).</DialogDescription></DialogHeader>
               <div className="space-y-3 mt-4">
                 {error && <div className="p-3 rounded-lg bg-red-50 text-sm text-red-600">{error}</div>}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label>Full Name *</Label><Input autoComplete="off" value={form.full_name} onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} /></div>
+                  <div className="space-y-1"><Label>Nama Lengkap *</Label><Input autoComplete="off" value={form.full_name} onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} /></div>
                   <div className="space-y-1"><Label>Username *</Label><Input autoComplete="off" value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value }))} /></div>
                 </div>
                 <div className="space-y-1"><Label>Email *</Label><Input autoComplete="off" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
-                <div className="space-y-1"><Label>Phone</Label><Input autoComplete="off" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
+                <div className="space-y-1"><Label>Telepon</Label><Input autoComplete="off" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
                 <div className="space-y-1">
-                  <Label>Specialization *</Label>
+                  <Label>Spesialisasi *</Label>
                   <Select value={form.specialization} onValueChange={v => setForm(p => ({ ...p, specialization: v }))}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select Specialization" /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Pilih Spesialisasi" /></SelectTrigger>
                     <SelectContent>
                       {SPECIALIZATIONS.map(spec => (
                         <SelectItem key={spec.id} value={spec.id}>{spec.label}</SelectItem>
@@ -106,12 +102,12 @@ export default function OwnerDoctorsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1"><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} rows={2} /></div>
+                <div className="space-y-1"><Label>Bio Singkat</Label><Textarea value={form.bio} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} rows={2} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label>Experience (years)</Label><Input type="number" min="0" value={form.years_experience} onChange={e => { const v = parseInt(e.target.value) || 0; setForm(p => ({ ...p, years_experience: Math.max(0, v).toString() })); }} /></div>
+                  <div className="space-y-1"><Label>Pengalaman (tahun)</Label><Input type="number" min="0" value={form.years_experience} onChange={e => { const v = parseInt(e.target.value) || 0; setForm(p => ({ ...p, years_experience: Math.max(0, v).toString() })); }} /></div>
                   <div className="space-y-1"><Label>Password *</Label><div className="relative"><Input type={showPassword ? "text" : "password"} autoComplete="new-password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
                 </div>
-                <Button onClick={handleCreate} disabled={saving || !form.full_name || !form.email || !form.username || !form.password || !form.specialization} className="w-full rounded-xl text-white" style={{ background: "#6b21a8" }}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Creating...</> : "Create Doctor Account"}</Button>
+                <Button onClick={handleCreate} disabled={saving || !form.full_name || !form.email || !form.username || !form.password || !form.specialization} className="w-full rounded-xl text-white" style={{ background: "#6b21a8" }}>{saving ? <><Loader2 className="h-4 w-4 animate-spin" />Menyimpan...</> : "Buat Akun Dokter"}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -128,7 +124,7 @@ export default function OwnerDoctorsPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-slate-900">Dr. {d.user?.full_name}{title}</p>
                     <p className="text-sm text-purple-600">{d.specialization}</p>
-                    <p className="text-xs text-slate-400">{d.years_experience} years exp. • {d.user?.email}</p>
+                    <p className="text-xs text-slate-400">{d.years_experience} thn pengalaman • {d.user?.email}</p>
                   </div>
                   <div className={`h-3 w-3 rounded-full ${d.is_active ? "bg-purple-500" : "bg-red-500"}`} />
                 </CardContent>

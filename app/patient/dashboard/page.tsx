@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
@@ -23,7 +23,7 @@ export default function PatientDashboard() {
       if (!authUser) return;
       const { data: profile } = await supabase.from("users").select("*").eq("id", authUser.id).single();
       if (profile) setUser(profile as User);
-      const { data: upcoming } = await supabase.from("appointments").select(`*, doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*)), service:services!appointments_service_id_fkey(*)`).eq("patient_id", authUser.id).in("status", ["pending", "approved"]).gte("appointment_date", new Date().toISOString().split("T")[0]).order("appointment_date", { ascending: true }).limit(5);
+      const { data: upcoming } = await supabase.from("appointments").select(`*, doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*))`).eq("patient_id", authUser.id).in("status", ["pending", "approved"]).gte("appointment_date", new Date().toISOString().split("T")[0]).order("emergency_level", { ascending: true }).order("appointment_date", { ascending: true }).limit(5);
       if (upcoming) setUpcomingList(upcoming as Appointment[]);
       const { count: upcomingCount } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("patient_id", authUser.id).in("status", ["pending", "approved"]);
       const { count: completedCount } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("patient_id", authUser.id).eq("status", "done");
@@ -35,27 +35,27 @@ export default function PatientDashboard() {
   }, []);
 
   if (loading) {
-    return (<div className="min-h-screen" style={{ background: "#f0f1f5" }}><Navbar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1a4a35" }} /></div></div>);
+    return (<div className="min-h-screen" style={{ background: "#f0f1f5" }}><Sidebar /><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1a4a35" }} /></div></div>);
   }
 
   const statCards = [
-    { label: "Upcoming", value: stats.upcomingAppointments, icon: Calendar, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
-    { label: "Completed", value: stats.completedAppointments, icon: CheckCircle, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
-    { label: "Notifications", value: stats.unreadNotifications, icon: Bell, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Akan Datang", value: stats.upcomingAppointments, icon: Calendar, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
+    { label: "Selesai", value: stats.completedAppointments, icon: CheckCircle, color: "text-emerald-700", bg: "bg-[#e8f0ea]" },
+    { label: "Notifikasi", value: stats.unreadNotifications, icon: Bell, color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold" style={{ color: "#1a4a35" }}>Welcome back, {user?.full_name?.split(" ")[0]}</h1>
-            <p className="text-slate-500 mt-1 tracking-wide">Here&apos;s an overview of your dental health journey</p>
+            <h1 className="text-3xl font-bold" style={{ color: "#1a4a35" }}>Selamat Datang, {user?.full_name?.split(" ")[0]}</h1>
+            <p className="text-slate-500 mt-1 tracking-wide">Berikut adalah ringkasan perjalanan kesehatan gigi Anda</p>
           </div>
           <Link href="/patient/book">
             <Button size="lg" className="rounded-xl shadow-md hover:shadow-lg transition-all text-white font-semibold" style={{ background: "#1a4a35" }}>
-              <CalendarPlus className="h-5 w-5 mr-2" /> Book Appointment
+              <CalendarPlus className="h-5 w-5 mr-2" /> Buat Janji
             </Button>
           </Link>
         </div>
@@ -83,8 +83,8 @@ export default function PatientDashboard() {
             <Link href="/patient/book">
               <CardContent className="p-8">
                 <CalendarPlus className="h-10 w-10 mb-4 text-emerald-200 group-hover:scale-110 transition-transform" />
-                <h3 className="font-bold text-xl tracking-wide">Book Appointment</h3>
-                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">Schedule a new dental visit with AI-powered triage</p>
+                <h3 className="font-bold text-xl tracking-wide">Buat Janji</h3>
+                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">Jadwalkan kunjungan baru dengan triase AI</p>
               </CardContent>
             </Link>
           </Card>
@@ -93,8 +93,8 @@ export default function PatientDashboard() {
             <Link href="/patient/appointments">
               <CardContent className="p-8 relative z-10">
                 <Clock className="h-10 w-10 mb-4 text-emerald-200 group-hover:scale-110 transition-transform" />
-                <h3 className="font-bold text-xl tracking-wide">My Appointments</h3>
-                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">View and manage your appointment history</p>
+                <h3 className="font-bold text-xl tracking-wide">Riwayat Janji</h3>
+                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">Lihat dan kelola riwayat janji temu Anda</p>
               </CardContent>
             </Link>
           </Card>
@@ -103,8 +103,8 @@ export default function PatientDashboard() {
             <Link href="/patient/profile">
               <CardContent className="p-8 relative z-10">
                 <UserIcon className="h-10 w-10 mb-4 text-emerald-200 group-hover:scale-110 transition-transform" />
-                <h3 className="font-bold text-xl tracking-wide">Health Profile</h3>
-                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">Update your personal and health information</p>
+                <h3 className="font-bold text-xl tracking-wide">Profil Kesehatan</h3>
+                <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">Perbarui informasi pribadi dan kesehatan Anda</p>
               </CardContent>
             </Link>
           </Card>
@@ -114,10 +114,10 @@ export default function PatientDashboard() {
           <CardHeader className="px-8 pt-8 pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-3 text-xl font-bold" style={{ color: "#1a4a35" }}>
-                <Calendar className="h-6 w-6 text-emerald-600" />Upcoming Appointments
+                <Calendar className="h-6 w-6 text-emerald-600" />Janji Temu Akan Datang
               </CardTitle>
               <Link href="/patient/appointments">
-                <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 rounded-xl">View All →</Button>
+                <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 rounded-xl">Lihat Semua →</Button>
               </Link>
             </div>
           </CardHeader>
@@ -125,10 +125,10 @@ export default function PatientDashboard() {
             {upcomingList.length === 0 ? (
               <div className="text-center py-16 bg-[#e8f0ea]/50 rounded-2xl">
                 <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">No upcoming appointments</p>
+                <p className="text-slate-500 font-medium">Tidak ada janji temu akan datang</p>
                 <Link href="/patient/book">
                   <Button className="mt-5 rounded-xl font-semibold text-white" style={{ background: "#1a4a35" }} size="sm">
-                    <CalendarPlus className="h-4 w-4 mr-2" /> Book Now
+                    <CalendarPlus className="h-4 w-4 mr-2" /> Buat Sekarang
                   </Button>
                 </Link>
               </div>

@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
+const PRIORITY_LABELS: Record<string, string> = {
+  critical: "Prioritas",
+  moderate: "Sedang",
+  routine: "Ringan",
+};
+
 const createAppointmentSchema = z.object({
   doctor_id: z.string().uuid(),
-  service_id: z.string().uuid(),
+  service_id: z.string().uuid().nullable().optional(),
   appointment_date: z.string(),
   slot_time: z.string(),
   symptom_description: z.string().nullable().optional(),
   emergency_level: z.enum(["critical", "moderate", "routine"]).default("routine"),
   ai_analysis_result: z.string().nullable().optional(),
+  // estimated_cost is stored in ai_analysis_result JSON, NOT as a separate DB column
 });
 
 export async function GET(request: NextRequest) {
@@ -33,9 +40,9 @@ export async function GET(request: NextRequest) {
     .select(`
       *,
       patient:users!appointments_patient_id_fkey(*),
-      doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*)),
-      service:services!appointments_service_id_fkey(*)
+      doctor:doctors!appointments_doctor_id_fkey(*, user:users!doctors_user_id_fkey(*))
     `)
+    .order("emergency_level", { ascending: true })
     .order("appointment_date", { ascending: false });
 
   if (status) query = query.eq("status", status);
@@ -84,18 +91,24 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     return NextResponse.json(
-      { error: "This time slot is already booked" },
+      { error: "Slot waktu ini sudah dipesan" },
       { status: 409 }
     );
   }
 
   const adminSupabase = await createAdminClient();
 
+  // Only insert columns that exist in the DB schema
   const { data, error } = await adminSupabase
     .from("appointments")
     .insert({
       patient_id: user.id,
-      ...parsed.data,
+      doctor_id: parsed.data.doctor_id,
+      appointment_date: parsed.data.appointment_date,
+      slot_time: parsed.data.slot_time,
+      symptom_description: parsed.data.symptom_description ?? null,
+      emergency_level: parsed.data.emergency_level,
+      ai_analysis_result: parsed.data.ai_analysis_result ?? null,
     })
     .select()
     .single();
@@ -104,21 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Create notification for the doctor
-  const { data: doctor } = await adminSupabase
-    .from("doctors")
-    .select("user_id")
-    .eq("id", parsed.data.doctor_id)
-    .single();
 
-  if (doctor) {
-    await adminSupabase.from("notifications").insert({
-      user_id: doctor.user_id,
-      title: "New Appointment Request",
-      message: `A new ${parsed.data.emergency_level} appointment has been booked for ${parsed.data.appointment_date}`,
-      type: "booking",
-    });
-  }
 
   return NextResponse.json(data, { status: 201 });
 }

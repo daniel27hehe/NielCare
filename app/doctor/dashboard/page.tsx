@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Navbar } from "@/components/shared/Navbar";
+import { Sidebar } from "@/components/shared/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { formatCurrency } from "@/lib/utils/formatters";
 import type { Appointment, DoctorStats } from "@/types";
-import { Loader2, Calendar, Users, CheckCircle, Clock, DollarSign } from "lucide-react";
+import { Loader2, Calendar, Users, CheckCircle, Clock, TrendingUp } from "lucide-react";
 
 export default function DoctorDashboard() {
   const supabase = createClient();
@@ -67,7 +67,7 @@ export default function DoctorDashboard() {
   if (loading)
     return (
       <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-        <Navbar />
+        <Sidebar />
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#1e40af" }} />
         </div>
@@ -75,30 +75,30 @@ export default function DoctorDashboard() {
     );
 
   const statCards = [
-    { label: "Today", value: stats.todayAppointments, icon: Calendar, color: "text-blue-700", bg: "bg-blue-50" },
-    { label: "Pending", value: stats.pendingAppointments, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Patients", value: stats.totalPatients, icon: Users, color: "text-blue-700", bg: "bg-blue-50" },
-    { label: "Completed (Month)", value: stats.completedThisMonth, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Earnings (Month)", value: formatCurrency(stats.earningsThisMonth || 0), icon: DollarSign, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Hari Ini", value: stats.todayAppointments, icon: Calendar, color: "text-blue-700", bg: "bg-blue-50" },
+    { label: "Menunggu", value: stats.pendingAppointments, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Pasien", value: stats.totalPatients, icon: Users, color: "text-blue-700", bg: "bg-blue-50" },
+    { label: "Selesai (Bulan)", value: stats.completedThisMonth, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Pendapatan (Bulan)", value: formatCurrency(stats.earningsThisMonth || 0), icon: TrendingUp, color: "text-green-600", bg: "bg-green-50" },
   ];
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f1f5" }}>
-      <Navbar />
+      <Sidebar />
       <main className="mx-auto max-w-7xl px-4 py-8 animate-fade-in">
-        <h1 className="text-3xl font-bold mb-8" style={{ color: "#1e40af" }}>Doctor Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8" style={{ color: "#1e40af" }}>Beranda Dokter</h1>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
-          {statCards.map(s => (
-            <Card key={s.label} className="border-0 shadow-lg rounded-3xl bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-widest text-slate-500 uppercase">{s.label}</p>
-                    <p className="text-2xl font-bold mt-2 truncate" style={{ color: "#1e40af" }}>{s.value}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-5 mb-8">
+          {statCards.map((s, idx) => (
+            <Card key={s.label} className={`border-0 shadow-lg rounded-3xl bg-white overflow-hidden ${idx === 4 ? 'col-span-2 lg:col-span-2' : 'col-span-1'}`}>
+              <CardContent className="p-5">
+                <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold tracking-widest text-slate-500 uppercase leading-snug">{s.label}</p>
+                    <p className="text-xl xl:text-2xl font-bold mt-2" style={{ color: "#1e40af", wordBreak: "break-word" }}>{s.value}</p>
                   </div>
-                  <div className={`p-4 rounded-2xl ${s.bg}`}>
-                    <s.icon className={`h-7 w-7 ${s.color}`} />
+                  <div className={`p-3 rounded-2xl flex items-center justify-center h-12 w-12 flex-shrink-0 ${s.bg}`}>
+                    {s.icon && <s.icon className={`h-6 w-6 ${s.color}`} />}
                   </div>
                 </div>
               </CardContent>
@@ -109,14 +109,14 @@ export default function DoctorDashboard() {
         <Card className="border-0 shadow-lg rounded-3xl bg-white">
           <CardHeader className="px-8 pt-8 pb-4">
             <CardTitle className="flex items-center gap-3 text-xl font-bold" style={{ color: "#1e40af" }}>
-              <Calendar className="h-6 w-6 text-blue-600" />Today&apos;s Appointments
+              <Calendar className="h-6 w-6 text-blue-600" />Janji Temu Hari Ini
             </CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
             {todayList.length === 0 ? (
               <div className="text-center py-16 bg-blue-50/50 rounded-2xl">
                 <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">No appointments today</p>
+                <p className="text-slate-500 font-medium">Tidak ada janji temu hari ini</p>
               </div>
             ) : (
               <div className="space-y-4">
